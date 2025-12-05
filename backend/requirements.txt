@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+python-multipart
+gitpython
+radon
+javalang
+libclang
+networkx
+pydantic
