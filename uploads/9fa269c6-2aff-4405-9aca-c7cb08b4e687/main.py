@@ -4,7 +4,7 @@ import os
 import uuid
 import shutil
 # Import analyzers
-from analyzers import get_analyzer, get_git_analyzer
+from analyzers import get_analyzer
 
 app = FastAPI(title="CodeMap Backend")
 
@@ -28,13 +28,6 @@ ANALYSIS_RESULTS = {
                 "main.py": 5
             },
             "average_complexity": 5.6
-        },
-        "issues": {
-            "count": 0,
-            "threshold": 10
-        },
-        "git_stats": {
-            "commits": 0
         }
     }
 }
@@ -84,31 +77,16 @@ async def upload_code(file: UploadFile = File(...)):
         language = "cpp"
         
     analyzer = get_analyzer(language, project_dir)
-    git_analyzer = get_git_analyzer(project_dir)
-    
-    results = {"nodes": [], "edges": [], "complexity": {}, "issues": {"count": 0}, "git_stats": {"commits": 0}}
-
     if analyzer:
         try:
             results = analyzer.analyze()
-            # Ensure issues key exists if analyzer didn't return it
-            if "issues" not in results:
-                results["issues"] = {"count": 0, "threshold": 10}
-
+            ANALYSIS_RESULTS[project_id] = results
+            PROJECTS[project_id] = {"language": language, "original_filename": file.filename}
         except Exception as e:
             print(f"Analysis failed: {e}")
-            results["error"] = str(e)
-            
-    # Git Analysis
-    if git_analyzer:
-         commits = git_analyzer.get_commit_count()
-         if commits is not None:
-             results["git_stats"] = {"commits": commits}
-         else:
-             results["git_stats"] = {"commits": 0} # Or None to indicate no git repo
-
-    ANALYSIS_RESULTS[project_id] = results
-    PROJECTS[project_id] = {"language": language, "original_filename": file.filename}
+            ANALYSIS_RESULTS[project_id] = {"nodes": [], "edges": [], "complexity": {}, "error": str(e)}
+    else:
+        ANALYSIS_RESULTS[project_id] = {"nodes": [], "edges": [], "complexity": {}}
 
     return {
         "project_id": project_id,

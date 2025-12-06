@@ -7,7 +7,7 @@ from radon.visitors import ComplexityVisitor
 class PythonAnalyzer(BaseAnalyzer):
     def analyze(self):
         nodes = []
-        edges = []
+        raw_edges = []
         file_metrics = {}
         total_cc = 0
         count = 0
@@ -29,7 +29,7 @@ class PythonAnalyzer(BaseAnalyzer):
                         visitor.visit(tree)
                         
                         nodes.extend(visitor.nodes)
-                        edges.extend(visitor.edges)
+                        raw_edges.extend(visitor.calls)
                         
                         # Complexity Analysis
                         cv = ComplexityVisitor.from_code(content)
@@ -42,12 +42,51 @@ class PythonAnalyzer(BaseAnalyzer):
                     except Exception as e:
                         print(f"Error analyzing {rel_path}: {e}")
 
+        # Post-processing: Resolve edges
+        # 1. Map function names to IDs (Simple approach: first match wins)
+        #    In a real system, we'd need imports/scopes to resolve correctly.
+        func_map = {}
+        for n in nodes:
+            # key: function name, value: node ID
+            # If multiple functions have same name, we overwrite (limitation of MVP)
+            func_map[n['label']] = n['id']
+
+        final_edges = []
+        existing_node_ids = set(n['id'] for n in nodes)
+
+        for src, target_name in raw_edges:
+            target_id = None
+            
+            if target_name in func_map:
+                target_id = func_map[target_name]
+            else:
+                # External or unparsed function
+                target_id = f"external:{target_name}"
+                if target_id not in existing_node_ids:
+                    nodes.append({
+                        "id": target_id,
+                        "label": target_name,
+                        "type": "external",
+                        "style": { "background": "#475569", "border": "1px dashed #94a3b8" }
+                    })
+                    existing_node_ids.add(target_id)
+            
+            final_edges.append({
+                "source": src,
+                "target": target_id,
+                "animated": True
+            })
+
         return {
             "nodes": nodes,
-            "edges": edges,
+            "edges": final_edges,
             "complexity": {
                 "file_metrics": file_metrics,
                 "average_complexity": total_cc / count if count > 0 else 0
+            },
+            "issues": {
+                "count": sum(1 for val in file_metrics.values() if val > 10),
+                "threshold": 10
             }
         }
 
@@ -55,7 +94,7 @@ class CallGraphVisitor(ast.NodeVisitor):
     def __init__(self, filename):
         self.filename = filename
         self.nodes = []
-        self.edges = []
+        self.calls = [] # (source_id, target_name)
         self.current_function = None
 
     def visit_FunctionDef(self, node):
@@ -71,19 +110,9 @@ class CallGraphVisitor(ast.NodeVisitor):
 
     def visit_Call(self, node):
         if self.current_function:
-            # Try to resolve call name
             callee = self._get_func_name(node)
             if callee:
-                # We often don't know the exact file of the callee without deeper analysis/symbol table
-                # For now, we assume it's an external call or create a loose node
-                # To keep graph clean, we might only track if we can guess it's local, or just node name
-                
-                # Simplified: Edge to a node named 'callee' (might duplicate if not careful)
-                # Ideally we want to link to existing definitions. 
-                # For this MVP, we create an edge to the name.
-                
-                target_id = f"unknown:{callee}" # Placeholder
-                self.edges.append({"source": self.current_function, "target": callee}) # Just use name for target for now
+                self.calls.append((self.current_function, callee))
 
     def _get_func_name(self, node):
         if isinstance(node.func, ast.Name):

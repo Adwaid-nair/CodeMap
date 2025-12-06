@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, GitGraph, Network, UploadCloud, Layers } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -16,8 +16,14 @@ const NavItem = ({ to, icon: Icon, label, active, disabled }) => (
     </Link>
 );
 
-export default function Sidebar({ projectId }) {
+export default function Sidebar({ projectId, onNewUpload }) {
     const location = useLocation();
+    const navigate = useNavigate();
+
+    const handleNewUpload = () => {
+        if (onNewUpload) onNewUpload();
+        navigate('/');
+    };
 
     return (
         <aside className="w-64 glass border-r border-white/10 h-full flex flex-col p-4">
@@ -64,7 +70,7 @@ export default function Sidebar({ projectId }) {
             </nav>
 
             <div className="mt-auto pt-8 border-t border-white/10">
-                <button onClick={() => window.location.reload()} className="flex items-center gap-2 px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors">
+                <button onClick={handleNewUpload} className="flex items-center gap-2 px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors">
                     <UploadCloud size={16} />
                     New Upload
                 </button>

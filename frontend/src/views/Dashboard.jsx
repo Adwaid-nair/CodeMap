@@ -21,7 +21,9 @@ export default function Dashboard({ projectId }) {
     const [metrics, setMetrics] = useState({
         totalFiles: 0,
         avgComplexity: 0,
-        topFunctions: []
+        topFunctions: [],
+        issuesCount: 0,
+        gitCommits: '-'
     });
 
     useEffect(() => {
@@ -40,7 +42,9 @@ export default function Dashboard({ projectId }) {
                 setMetrics({
                     totalFiles: Object.keys(fileMetrics).length || nodes.length, // Fallback
                     avgComplexity: complexity.average_complexity ? complexity.average_complexity.toFixed(2) : 'N/A',
-                    topFunctions: chartData
+                    topFunctions: chartData,
+                    issuesCount: res.data.issues ? res.data.issues.count : 0,
+                    gitCommits: res.data.git_stats ? res.data.git_stats.commits : 'N/A'
                 });
             })
             .catch(e => console.error(e));
@@ -51,8 +55,8 @@ export default function Dashboard({ projectId }) {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard icon={FileText} label="Total Files Analyzed" value={metrics.totalFiles} color="#38bdf8" />
                 <StatCard icon={Activity} label="Avg Complexity" value={metrics.avgComplexity} color="#f472b6" />
-                <StatCard icon={Zap} label="Issues Detected" value="0" color="#fbbf24" />
-                <StatCard icon={GitCommit} label="Git Commits" value="-" color="#a78bfa" />
+                <StatCard icon={Zap} label="Issues Detected" value={metrics.issuesCount} color="#fbbf24" />
+                <StatCard icon={GitCommit} label="Git Commits" value={metrics.gitCommits} color="#a78bfa" />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

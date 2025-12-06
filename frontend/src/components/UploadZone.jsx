@@ -2,10 +2,12 @@ import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, FileCode, CheckCircle2 } from 'lucide-react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 export default function UploadZone({ onUploadComplete }) {
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState(null);
+    const navigate = useNavigate();
 
     const onDrop = useCallback(async (acceptedFiles) => {
         if (acceptedFiles.length === 0) return;
@@ -19,14 +21,16 @@ export default function UploadZone({ onUploadComplete }) {
 
         try {
             // Assuming Backend runs on port 8000
-            const response = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/upload`, formData, {
+            const response = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/upload`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
 
             onUploadComplete(response.data.project_id);
+            navigate('/');
         } catch (err) {
-            setError("Upload failed. Ensure backend is running.");
-            console.error(err);
+            const msg = err.response?.data?.message || err.message || "Upload failed";
+            setError(`Upload Error: ${msg}. Check console for details.`);
+            console.error("Upload failed:", err);
         } finally {
             setUploading(false);
         }
@@ -34,13 +38,19 @@ export default function UploadZone({ onUploadComplete }) {
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,
+        onDropRejected: (fileRejections) => {
+            const msg = fileRejections.map(r => `${r.file.name}: ${r.errors.map(e => e.message).join(', ')}`).join('\n');
+            setError(`File rejected:\n${msg}`);
+        },
         accept: {
             'application/zip': ['.zip', '.rar', '.7z'],
             'application/x-tar': ['.tar', '.gz'],
             // For simple single file tests
             'text/x-python': ['.py'],
             'text/java': ['.java'],
-            'text/x-c++src': ['.cpp', '.h', '.hpp']
+            'text/x-c++src': ['.cpp', '.h', '.hpp'],
+            'text/javascript': ['.js', '.jsx'], // Adding JS/JSX support as it might be common
+            'application/javascript': ['.js', '.jsx']
         }
     });
 

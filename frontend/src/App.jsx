@@ -13,7 +13,7 @@ function App() {
     return (
         <Router>
             <div className="flex h-screen bg-background text-gray-100 overflow-hidden">
-                <Sidebar projectId={projectId} />
+                <Sidebar projectId={projectId} onNewUpload={() => setProjectId(null)} />
 
                 <main className="flex-1 overflow-auto p-8 relative">
                     <div className="max-w-7xl mx-auto space-y-8">
