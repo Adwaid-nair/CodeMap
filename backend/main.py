@@ -46,8 +46,12 @@ os.makedirs("uploads", exist_ok=True)
 FRONTEND_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:3000",
-    # "https://your-vercel-url.vercel.app"  ← we will update this later
 ]
+
+# Add CORS_ORIGINS from environment variable (for deployment)
+env_origins = os.getenv("CORS_ORIGINS")
+if env_origins:
+    FRONTEND_ORIGINS.extend(env_origins.split(","))
 
 app.add_middleware(
     CORSMiddleware,
